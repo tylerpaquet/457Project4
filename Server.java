@@ -14,7 +14,6 @@ public class Server {
 	int portNum = Integer.parseInt(input.readLine());
 
         try {
-           
             servsock = new ServerSocket(portNum);
             System.out.println("Waiting for connection");
             
