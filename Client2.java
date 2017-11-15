@@ -53,6 +53,8 @@ public class Client2 implements Runnable {
             System.err.println("Couldn't get I/O for the connection to the host " + host);
         }
 
+
+        //User information and instrucitons
         System.out.println("Welcome to the TCP Encrypted Chat Program. There are a few things you should know " +
                 "before you get started. There are two types of messages. Private {} and Public <>. " +
                 "A private message can be sent by starting the message " +
@@ -81,7 +83,7 @@ public class Client2 implements Runnable {
                     os.println(inputLine.readLine().trim());
                 }
 
-                //Close streans and socket
+                //Close streams and socket
                 os.close();
                 is.close();
                 clientSocket.close();

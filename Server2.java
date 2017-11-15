@@ -27,7 +27,6 @@ public class Server2 {
 
     public static void main(String args[]) {
 
-        // The default port number.
         int portNumber = 2222;
 
         System.out.println("Connected to port number = " + portNumber);
@@ -108,6 +107,7 @@ class clientThread extends Thread
                 os.println("\nEnter your username:");
                 name = is.readLine().trim();
 
+                //Check to see if entered username is currently being used
                 synchronized (this)
                 {
                     for (int i = 0; i < maxClientsCount; i++)
@@ -121,6 +121,8 @@ class clientThread extends Thread
                         }
                     }
                 }
+
+                //Alert the user if they entered invalid username, else continue
                 if(duplicate == 1)
                 {
                     os.println("This username is already taken.");
@@ -153,9 +155,11 @@ class clientThread extends Thread
                         break;
                     }
                 }
+
+                //Alert other clients that the new client has joined
                 for (int i = 0; i < maxClientsCount; i++)
                 {
-                    if (threads[i] != null && threads[i] != this &&threads[i].clientName != null)
+                    if (threads[i] != null && threads[i] != this && threads[i].clientName != null)
                     {
                         threads[i].os.println("<Server> " + name + " has joined the chat room");
                     }
@@ -175,7 +179,8 @@ class clientThread extends Thread
                 }
                 System.out.println("Number of clients connected: " + openClients);
             }
-            //start conversation
+
+            //start conversation (break when the client is kicked)
             while (this.kicked == 0)
             {
                 String line = is.readLine();
@@ -184,6 +189,7 @@ class clientThread extends Thread
                     break;
                 }
 
+                //If client typed /q then break from conversation loop
                 if (line.startsWith("/q"))
                 {
                     synchronized (this)
@@ -202,7 +208,7 @@ class clientThread extends Thread
                     break;
                 }
 
-                //Send Private Message only to right client
+                //Send Private Message only to correct client
                 if (line.startsWith("@"))
                 {
                     String[] words = line.split("\\s", 2);
@@ -229,6 +235,8 @@ class clientThread extends Thread
                         }
                     }
                 }
+
+                //Send client list back to client
                 else if(line.startsWith("clientlist"))
                 {
                     synchronized (this)
@@ -246,6 +254,8 @@ class clientThread extends Thread
                         this.os.println("-----------------------\n");
                     }
                 }
+
+                //Kick the specified user
                 else if(line.startsWith("kick @"))
                 {
                     //System.out.println(line.substring(5, line.length()));
@@ -293,19 +303,17 @@ class clientThread extends Thread
                         }
                     }
                 }
+
+                //Message must be public so broadcast to all clients
                 else
                 {
-                    if(true)
+                    synchronized (this)
                     {
-                        //Message must be public so broadcast to all clients
-                        synchronized (this)
+                        for (int i = 0; i < maxClientsCount; i++)
                         {
-                            for (int i = 0; i < maxClientsCount; i++)
+                            if (threads[i] != null && threads[i].clientName != null)
                             {
-                                if (threads[i] != null && threads[i].clientName != null)
-                                {
-                                    threads[i].os.println("<" + name + "> " + line);
-                                }
+                                threads[i].os.println("<" + name + "> " + line);
                             }
                         }
                     }
@@ -313,6 +321,7 @@ class clientThread extends Thread
                 }
             }
 
+            //Only print if the user wasn't kicked
             if(kicked == 0)
             {
                 synchronized (this)
