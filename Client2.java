@@ -54,13 +54,18 @@ public class Client2 implements Runnable {
         }
 
         System.out.println("Welcome to the TCP Encrypted Chat Program. There are a few things you should know " +
-                "before you get started. First of all, enter '/q' when you want to exit the program. There are " +
-                "two types of messages. Private {} and Public <>. A private message can be sent by starting the message " +
+                "before you get started. There are two types of messages. Private {} and Public <>. " +
+                "A private message can be sent by starting the message " +
                 "with '@username'. All other messages will be sent as public. Enjoy!");
 
         System.out.println("\nList of current commands:");
         System.out.println("--------------------------------------------------");
-        System.out.println("ClientList: returns a list of conncected clients");
+        System.out.println("/q: quits the program");
+        System.out.println("clientlist: returns a list of conncected clients");
+        System.out.println("@username message: sends a private message if the username " +
+                "is a connected client");
+        System.out.println("kick @username: if the user is connected, they will be " +
+                "kicked");
         System.out.println("--------------------------------------------------");
 
         if (clientSocket != null && os != null && is != null)
@@ -68,7 +73,7 @@ public class Client2 implements Runnable {
             try
             {
                 //create new thread to read messages from server
-                new Thread(new Client()).start();
+                new Thread(new Client2()).start();
 
                 //send messages
                 while (!closed)
@@ -90,7 +95,7 @@ public class Client2 implements Runnable {
 
     public void run()
     {
-        //Keep reading from server until we receive a message that starts with 'See'.
+        //Keep reading from server until we receive a message that starts with 'See' or 'You'.
         String responseLine;
         try
         {
@@ -98,6 +103,10 @@ public class Client2 implements Runnable {
             {
                 System.out.println(responseLine);
                 if (responseLine.startsWith("See"))
+                {
+                    break;
+                }
+                if (responseLine.startsWith("You"))
                 {
                     break;
                 }

@@ -82,6 +82,7 @@ class clientThread extends Thread
     private Socket clientSocket = null;
     private final clientThread[] threads;
     private int maxClientsCount;
+    int kicked = 0;
 
     public clientThread(Socket clientSocket, clientThread[] threads)
     {
@@ -103,11 +104,34 @@ class clientThread extends Thread
             String name;
             while (true)
             {
+                int duplicate = 0;
                 os.println("\nEnter your username:");
                 name = is.readLine().trim();
-                if (name.indexOf('@') != -1)
+
+                synchronized (this)
+                {
+                    for (int i = 0; i < maxClientsCount; i++)
+                    {
+                        if (threads[i] != null && threads[i].clientName != null)
+                        {
+                            if(name.equals(threads[i].clientName.substring(1, threads[i].clientName.length())))
+                            {
+                                duplicate = 1;
+                            }
+                        }
+                    }
+                }
+                if(duplicate == 1)
+                {
+                    os.println("This username is already taken.");
+                }
+                else if (name.indexOf('@') != -1)
                 {
                     os.println("The name should not contain '@' character.");
+                }
+                else if (name.indexOf(' ') != -1)
+                {
+                    os.println("The name should not contain spaces.");
                 }
                 else
                 {
@@ -131,7 +155,7 @@ class clientThread extends Thread
                 }
                 for (int i = 0; i < maxClientsCount; i++)
                 {
-                    if (threads[i] != null && threads[i] != this)
+                    if (threads[i] != null && threads[i] != this &&threads[i].clientName != null)
                     {
                         threads[i].os.println("<Server> " + name + " has joined the chat room");
                     }
@@ -152,9 +176,14 @@ class clientThread extends Thread
                 System.out.println("Number of clients connected: " + openClients);
             }
             //start conversation
-            while (true)
+            while (this.kicked == 0)
             {
                 String line = is.readLine();
+                if(this.kicked == 1)
+                {
+                    break;
+                }
+
                 if (line.startsWith("/q"))
                 {
                     synchronized (this)
@@ -200,7 +229,7 @@ class clientThread extends Thread
                         }
                     }
                 }
-                else if(line.startsWith("ClientList"))
+                else if(line.startsWith("clientlist"))
                 {
                     synchronized (this)
                     {
@@ -215,6 +244,53 @@ class clientThread extends Thread
                             }
                         }
                         this.os.println("-----------------------\n");
+                    }
+                }
+                else if(line.startsWith("kick @"))
+                {
+                    //System.out.println(line.substring(5, line.length()));
+                    String kickedName;
+                    synchronized (this)
+                    {
+                        for (int i = 0; i < maxClientsCount; i++)
+                        {
+                            if (threads[i] != null && threads[i].clientName.equals(line.substring(5, line.length())))
+                            {
+                                kickedName = threads[i].clientName;
+                                System.out.println(this.clientName.substring(1, this.clientName.length()) + " kicked " +
+                                        kickedName.substring(1, kickedName.length()));
+                                threads[i].kicked = 1;
+                                threads[i].os.println("You have been kicked by " +
+                                        this.clientName.substring(0, this.clientName.length()));
+                                threads[i] = null;
+
+                                synchronized (this)
+                                {
+                                    int openClients = 0;
+                                    for (int j = 0; j < maxClientsCount; j++)
+                                    {
+                                        if (threads[j] != null && threads[j].clientName != null)
+                                        {
+                                            openClients++;
+                                        }
+                                    }
+                                    System.out.println("Number of clients connected: " + openClients);
+                                }
+
+                                synchronized (this)
+                                {
+                                    for (int k = 0; k < maxClientsCount; k++)
+                                    {
+                                        if (threads[k] != null && threads[k].clientName != null)
+                                        {
+                                            threads[k].os.println("<Server> " +
+                                                    this.clientName.substring(1, this.clientName.length()) + " kicked " +
+                                                    kickedName.substring(1, kickedName.length()));
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 else
@@ -237,14 +313,18 @@ class clientThread extends Thread
                 }
             }
 
-            synchronized (this)
+            if(kicked == 0)
             {
-                for (int i = 0; i < maxClientsCount; i++)
+                synchronized (this)
                 {
-                    if (threads[i] != null && threads[i] != this
-                            && threads[i].clientName != null)
+                    for (int i = 0; i < maxClientsCount; i++)
                     {
-                        threads[i].os.println("<Server> " + name + " has left the chat room");
+                        if (threads[i] != null && threads[i] != this
+                                && threads[i].clientName != null)
+                        {
+
+                            threads[i].os.println("<Server> " + name + " has left the chat room");
+                        }
                     }
                 }
             }
