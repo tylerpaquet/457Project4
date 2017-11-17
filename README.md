@@ -12,4 +12,4 @@ TCP Encrypted Chat Program
 2. Broadcast message (sent to all clients)
 3. Private message (sent to specific client)
 4. Client list - when requested, client is sent a list of other connected clients
-5. admin functions - ability to kick other clients
+5. Admin functions - ability to kick other clients
