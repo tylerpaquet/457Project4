@@ -55,20 +55,26 @@ public class Client2 implements Runnable {
 
 
         //User information and instrucitons
-        System.out.println("Welcome to the TCP Encrypted Chat Program. There are a few things you should know " +
-                "before you get started. There are two types of messages. Private {} and Public <>. " +
-                "A private message can be sent by starting the message " +
-                "with '@username'. All other messages will be sent as public. Enjoy!");
+        System.out.println("\nWelcome to our TCP Encrypted Chat Program. Enjoy!");
 
         System.out.println("\nList of current commands:");
-        System.out.println("--------------------------------------------------");
-        System.out.println("/q: quits the program");
-        System.out.println("clientlist: returns a list of conncected clients");
-        System.out.println("@username message: sends a private message if the username " +
-                "is a connected client");
-        System.out.println("kick @username: if the user is connected, they will be " +
-                "kicked");
-        System.out.println("--------------------------------------------------");
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("/quit\t\t\t| quits the program");
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("/clients\t\t| returns a list of connected clients");
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("/kick @client\t\t| kicks client");
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("@client message\t\t| sends a private message to client");
+        System.out.println("--------------------------------------------------------------");
+        
+        System.out.println("\nOther useful info:");
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("Anything not in command list will be sent as a public message");
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("Public messages <>\tPrivate messages {}");
+        System.out.println("--------------------------------------------------------------");
+        
 
         if (clientSocket != null && os != null && is != null)
         {

@@ -190,7 +190,7 @@ class clientThread extends Thread
                 }
 
                 //If client typed /q then break from conversation loop
-                if (line.startsWith("/q"))
+                if (line.startsWith("/quit"))
                 {
                     synchronized (this)
                     {
@@ -237,7 +237,7 @@ class clientThread extends Thread
                 }
 
                 //Send client list back to client
-                else if(line.startsWith("clientlist"))
+                else if(line.startsWith("/clients"))
                 {
                     synchronized (this)
                     {
@@ -256,7 +256,7 @@ class clientThread extends Thread
                 }
 
                 //Kick the specified user
-                else if(line.startsWith("kick @"))
+                else if(line.startsWith("/kick @"))
                 {
                     //System.out.println(line.substring(5, line.length()));
                     String kickedName;
@@ -264,14 +264,14 @@ class clientThread extends Thread
                     {
                         for (int i = 0; i < maxClientsCount; i++)
                         {
-                            if (threads[i] != null && threads[i].clientName.equals(line.substring(5, line.length())))
+                            if (threads[i] != null && threads[i].clientName.equals(line.substring(6, line.length())))
                             {
                                 kickedName = threads[i].clientName;
                                 System.out.println(this.clientName.substring(1, this.clientName.length()) + " kicked " +
                                         kickedName.substring(1, kickedName.length()));
                                 threads[i].kicked = 1;
                                 threads[i].os.println("You have been kicked by " +
-                                        this.clientName.substring(0, this.clientName.length()));
+                                        this.clientName.substring(1, this.clientName.length()));
                                 threads[i] = null;
 
                                 synchronized (this)
