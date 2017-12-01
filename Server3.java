@@ -31,18 +31,48 @@ public class Server3 {
     private static final int maxClientsCount = 10;
     private static final clientThread[] threads = new clientThread[maxClientsCount];
 
-    public SecretKey generateAESKey(){
+    public void setPrivateKey(String filename){
 	try{
-	    KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-	    keyGen.init(128);
-	    SecretKey secKey = keyGen.generateKey();
-	    return secKey;
+	    File f = new File(filename);
+	    FileInputStream fs = new FileInputStream(f);
+	    byte[] keybytes = new byte[(int)f.length()];
+	    fs.read(keybytes);
+	    fs.close();
+	    PKCS8EncodedKeySpec keyspec = new PKCS8EncodedKeySpec(keybytes);
+	    KeyFactory rsafactory = KeyFactory.getInstance("RSA");
+	    privKey = rsafactory.generatePrivate(keyspec);
 	}catch(Exception e){
-	    System.out.println("Key Generation Exception");
+	    System.out.println("Private Key Exception");
+	    e.printStackTrace(System.out);
+	    System.exit(1);
+	}
+    }
+    public byte[] RSADecrypt(byte[] ciphertext){
+	try{
+	    Cipher c = Cipher.getInstance("RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
+	    c.init(Cipher.DECRYPT_MODE,privKey);
+	    byte[] plaintext=c.doFinal(ciphertext);
+	    return plaintext;
+	}catch(Exception e){
+	    System.out.println("RSA Decrypt Exception");
+	    System.exit(1);
+	    return null;
+	
+	}
+    }
+    public byte[] decrypt(byte[] ciphertext, SecretKey secKey, IvParameterSpec iv){
+	try{
+	    Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	    c.init(Cipher.DECRYPT_MODE,secKey,iv);
+	    byte[] plaintext = c.doFinal(ciphertext);
+	    return plaintext;
+	}catch(Exception e){
+	    System.out.println("AES Decrypt Exception");
 	    System.exit(1);
 	    return null;
 	}
     }
+	
     public static void main(String args[]) {
 
         int portNumber = 2222;
