@@ -79,18 +79,19 @@ public class Client3 implements Runnable {
 	    System.exit(1);
 	}
     }
-    public byte[] encrypt(byte[] plaintext, SecretKey secKey, IvParameterSpec iv){
-	try{
-	    Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
-	    c.init(Cipher.ENCRYPT_MODE,secKey,iv);
-	    byte[] ciphertext = c.doFinal(plaintext);
-	    return ciphertext;
-	}catch(Exception e){
-	    System.out.println("AES Encrypt Exception");
-	    System.exit(1);
-	    return null;
-	}
+    public byte[] decrypt(byte[] ciphertext, SecretKey secKey, IvParameterSpec iv){
+        try{
+            Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            c.init(Cipher.DECRYPT_MODE,secKey,iv);
+            byte[] plaintext = c.doFinal(ciphertext);
+            return plaintext;
+        }catch(Exception e){
+            System.out.println("AES Decrypt Exception" + e);
+            System.exit(1);
+            return null;
+        }
     }
+
 
     public static void main(String[] args) {
 
