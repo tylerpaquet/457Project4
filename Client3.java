@@ -15,6 +15,12 @@ import java.io.InputStreamReader;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.io.*;
+import javax.crypto.*;
+import javax.crypto.spec.*;
+import java.security.*;
+import java.security.spec.*;
+import javax.xml.bind.DatatypeConverter;
 
 public class Client3 implements Runnable {
 	
