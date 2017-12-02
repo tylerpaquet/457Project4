@@ -81,7 +81,7 @@ public class Server3 {
     }
 	
     public static void main(String args[]) {
-	server s = new server();
+	Server3 s = new Server3();
         s.setPrivateKey("RSApriv.der");
         s.setPublicKey("RSApub.der");
 	    
