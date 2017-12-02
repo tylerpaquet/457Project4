@@ -99,14 +99,14 @@ public class Client3 implements Runnable {
             return null;
         }
     }
-    public client3(){
+    public Client3(){
         pubKey = null;
     }
 
 
     public static void main(String[] args) {
     
-        client3 c = new client3();
+        Client3 c = new Client3();
         c.setPublicKey("RSApub.der");
         SecretKey sKey = c.generateAESKey();
         byte sKeyEncrypted[] = c.RSAEncrypt(sKey.getEncoded());
