@@ -81,7 +81,10 @@ public class Server3 {
     }
 	
     public static void main(String args[]) {
-
+	server s = new server();
+        s.setPrivateKey("RSApriv.der");
+        s.setPublicKey("RSApub.der");
+	    
         int portNumber = 2222;
 
         System.out.println("Connected to port number = " + portNumber);
