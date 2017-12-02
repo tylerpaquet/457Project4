@@ -21,7 +21,10 @@ import java.security.spec.*;
 import javax.xml.bind.DatatypeConverter;
 
 public class Server3 {
-
+	
+    private static PrivateKey privKey;
+    private static PublicKey pubKey;
+	
     // The server socket.
     private static ServerSocket serverSocket = null;
     // The client socket.
@@ -30,7 +33,11 @@ public class Server3 {
     // This chat server can accept up to maxClientsCount clients' connections.
     private static final int maxClientsCount = 10;
     private static final clientThread[] threads = new clientThread[maxClientsCount];
-
+	
+    public Server3(){
+        privKey = null;
+        pubKey = null;
+    }
     public void setPrivateKey(String filename){
 	try{
 	    File f = new File(filename);
