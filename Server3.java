@@ -38,6 +38,21 @@ public class Server3 {
         privKey = null;
         pubKey = null;
     }
+    public void setPublicKey(String filename){
+	try{
+	    File f = new File(filename);
+	    FileInputStream fs = new FileInputStream(f);
+	    byte[] keybytes = new byte[(int)f.length()];
+	    fs.read(keybytes);
+	    fs.close();
+	    X509EncodedKeySpec keyspec = new X509EncodedKeySpec(keybytes);
+	    KeyFactory rsafactory = KeyFactory.getInstance("RSA");
+	    pubKey = rsafactory.generatePublic(keyspec);
+	}catch(Exception e){
+	    System.out.println("Public Key Exception");
+	    System.exit(1);
+	}
+    }
     public void setPrivateKey(String filename){
 	try{
 	    File f = new File(filename);
