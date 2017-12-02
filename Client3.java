@@ -17,6 +17,8 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 public class Client3 implements Runnable {
+	
+    private static PublicKey pubKey;
 
     // The client socket
     private static Socket clientSocket = null;
@@ -91,10 +93,24 @@ public class Client3 implements Runnable {
             return null;
         }
     }
+    public client3(){
+        pubKey = null;
+    }
 
 
     public static void main(String[] args) {
-
+    
+        client3 c = new client3();
+        c.setPublicKey("RSApub.der");
+        SecretKey sKey = c.generateAESKey();
+        byte sKeyEncrypted[] = c.RSAEncrypt(sKey.getEncoded());
+	    
+	SecureRandom r = new SecureRandom();
+	byte ivbytes[] = new byte[16];
+	r.nextBytes(ivbytes);
+	IvParameterSpec iv = new IvParameterSpec(ivbytes);
+	    
+	    
         // The default port.
         int portNumber = 2222;
         // The default host.
