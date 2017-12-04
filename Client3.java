@@ -8,14 +8,9 @@
 //
 //##############################################################################################
 
-import java.io.DataInputStream;
-import java.io.PrintStream;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.IOException;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.io.*;
+import java.net.*;
+import java.nio.*;
 import javax.crypto.*;
 import javax.crypto.spec.*;
 import java.security.*;
@@ -23,8 +18,6 @@ import java.security.spec.*;
 import javax.xml.bind.DatatypeConverter;
 
 public class Client3 implements Runnable {
-	
-    private static PublicKey pubKey;
 
     // The client socket
     private static Socket clientSocket = null;
@@ -36,91 +29,21 @@ public class Client3 implements Runnable {
     private static BufferedReader inputLine = null;
     private static boolean closed = false;
     
-    public byte[] encrypt(byte[] plaintext, SecretKey secKey, IvParameterSpec iv){
-        try{
-            Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            c.init(Cipher.ENCRYPT_MODE,secKey,iv);
-            byte[] ciphertext = c.doFinal(plaintext);
-            return ciphertext;
-        }catch(Exception e){
-            System.out.println("AES Encrypt Exception");
-            System.exit(1);
-            return null;
-        }
-    }
-    public byte[] RSAEncrypt(byte[] plaintext){
-	try{
-	    Cipher c = Cipher.getInstance("RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
-	    c.init(Cipher.ENCRYPT_MODE,pubKey);
-	    byte[] ciphertext=c.doFinal(plaintext);
-	    return ciphertext;
-	}catch(Exception e){
-	    System.out.println("RSA Encrypt Exception");
-	    System.exit(1);
-	    return null;
-	}
-    }
-    public SecretKey generateAESKey(){
-	try{
-	    KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-	    keyGen.init(128);
-	    SecretKey secKey = keyGen.generateKey();
-	    return secKey;
-	}catch(Exception e){
-	    System.out.println("Key Generation Exception");
-	    System.exit(1);
-	    return null;
-	}
-    }
-    public void setPublicKey(String filename){
-	try{
-	    File f = new File(filename);
-	    FileInputStream fs = new FileInputStream(f);
-	    byte[] keybytes = new byte[(int)f.length()];
-	    fs.read(keybytes);
-	    fs.close();
-	    X509EncodedKeySpec keyspec = new X509EncodedKeySpec(keybytes);
-	    KeyFactory rsafactory = KeyFactory.getInstance("RSA");
-	    pubKey = rsafactory.generatePublic(keyspec);
-	}catch(Exception e){
-	    System.out.println("Public Key Exception");
-	    System.exit(1);
-	}
-    }
-    public byte[] decrypt(byte[] ciphertext, SecretKey secKey, IvParameterSpec iv){
-        try{
-            Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            c.init(Cipher.DECRYPT_MODE,secKey,iv);
-            byte[] plaintext = c.doFinal(ciphertext);
-            return plaintext;
-        }catch(Exception e){
-            System.out.println("AES Decrypt Exception" + e);
-            System.exit(1);
-            return null;
-        }
-    }
-    public Client3(){
-        pubKey = null;
-    }
-
+    static CryptoChat ce;
+	static SecretKey s;
 
     public static void main(String[] args) {
-    
-        Client3 c = new Client3();
-        c.setPublicKey("RSApub.der");
-        SecretKey sKey = c.generateAESKey();
-        byte sKeyEncrypted[] = c.RSAEncrypt(sKey.getEncoded());
-	    
-	SecureRandom r = new SecureRandom();
-	byte ivbytes[] = new byte[16];
-	r.nextBytes(ivbytes);
-	IvParameterSpec iv = new IvParameterSpec(ivbytes);
-	    
-	    
+
         // The default port.
         int portNumber = 2222;
+        
         // The default host.
         String host = "localhost";
+        
+        // Set Public Key
+		ce = new CryptoChat();
+		ce.setPublicKey("RSApub.der");
+		SecureRandom r = new SecureRandom();
 
 
         //open socket for sending data and create input and output streams for socket
@@ -130,6 +53,44 @@ public class Client3 implements Runnable {
             inputLine = new BufferedReader(new InputStreamReader(System.in));
             os = new PrintStream(clientSocket.getOutputStream());
             is = new DataInputStream(clientSocket.getInputStream());
+            
+            // Generate Symmetric Key
+			s = ce.generateAESKey();
+			
+			// Send Symmetric Key to server encrypted with public key
+			byte encryptedsecret[] = ce.RSAEncrypt(s.getEncoded());
+			os.write(encryptedsecret);
+			
+			// Create and send IV
+			byte ivbytes[] = new byte[16];
+			r.nextBytes(ivbytes);
+			IvParameterSpec iv = new IvParameterSpec(ivbytes);
+			os.write(ivbytes);
+			
+			
+			// Open new OutStream with CypherOutputStream
+			try{
+			
+				Cipher c_enc = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	    		c_enc.init(Cipher.ENCRYPT_MODE,s,iv);
+	    		os = new PrintStream(new CipherOutputStream(clientSocket.getOutputStream(), c_enc));
+	    	}catch(Exception e){
+	    		System.out.println("AES Encrypt Exception");
+	    		System.exit(1);
+			}
+			
+			// Open new InputStream with CypherInputStream
+	    	try{
+			
+				Cipher c_dec = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	    		c_dec.init(Cipher.DECRYPT_MODE,s,iv);
+	    		is = new DataInputStream(new CipherInputStream(clientSocket.getInputStream(), c_dec));
+	    	}catch(Exception e){
+	    		System.out.println("AES Encrypt Exception");
+	    		System.exit(1);
+			}
+			
+			
         }
         catch (UnknownHostException e)
         {
@@ -168,12 +129,13 @@ public class Client3 implements Runnable {
             try
             {
                 //create new thread to read messages from server
-                new Thread(new Client2()).start();
+                new Thread(new Client3()).start();
 
                 //send messages
                 while (!closed)
                 {
-                    os.println(inputLine.readLine().trim());
+                    os.println(addSpaces(inputLine.readLine()));
+                    os.flush();
                 }
 
                 //Close streams and socket
@@ -196,7 +158,7 @@ public class Client3 implements Runnable {
         {
             while ((responseLine = is.readLine()) != null)
             {
-                System.out.println(responseLine);
+                System.out.println(responseLine.trim());
                 if (responseLine.startsWith("See"))
                 {
                     break;
@@ -212,5 +174,10 @@ public class Client3 implements Runnable {
         {
             System.err.println("IOException:  " + e);
         }
+    }
+    
+    public static String addSpaces(String str)
+    {
+    	return str + "\n                                                                            ";
     }
 }

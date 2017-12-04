@@ -21,88 +21,21 @@ import java.security.spec.*;
 import javax.xml.bind.DatatypeConverter;
 
 public class Server3 {
-	
-    private static PrivateKey privKey;
-    private static PublicKey pubKey;
-	
+
     // The server socket.
     private static ServerSocket serverSocket = null;
     // The client socket.
     private static Socket clientSocket = null;
+    
+    static CryptoChat ce;
 
     // This chat server can accept up to maxClientsCount clients' connections.
     private static final int maxClientsCount = 10;
     private static final clientThread[] threads = new clientThread[maxClientsCount];
-	
-    public Server3(){
-        privKey = null;
-        pubKey = null;
-    }
-    public void setPublicKey(String filename){
-	try{
-	    File f = new File(filename);
-	    FileInputStream fs = new FileInputStream(f);
-	    byte[] keybytes = new byte[(int)f.length()];
-	    fs.read(keybytes);
-	    fs.close();
-	    X509EncodedKeySpec keyspec = new X509EncodedKeySpec(keybytes);
-	    KeyFactory rsafactory = KeyFactory.getInstance("RSA");
-	    pubKey = rsafactory.generatePublic(keyspec);
-	}catch(Exception e){
-	    System.out.println("Public Key Exception");
-	    System.exit(1);
-	}
-    }
-    public void setPrivateKey(String filename){
-	try{
-	    File f = new File(filename);
-	    FileInputStream fs = new FileInputStream(f);
-	    byte[] keybytes = new byte[(int)f.length()];
-	    fs.read(keybytes);
-	    fs.close();
-	    PKCS8EncodedKeySpec keyspec = new PKCS8EncodedKeySpec(keybytes);
-	    KeyFactory rsafactory = KeyFactory.getInstance("RSA");
-	    privKey = rsafactory.generatePrivate(keyspec);
-	}catch(Exception e){
-	    System.out.println("Private Key Exception");
-	    e.printStackTrace(System.out);
-	    System.exit(1);
-	}
-    }
-    public byte[] RSADecrypt(byte[] ciphertext){
-	try{
-	    Cipher c = Cipher.getInstance("RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
-	    c.init(Cipher.DECRYPT_MODE,privKey);
-	    byte[] plaintext=c.doFinal(ciphertext);
-	    return plaintext;
-	}catch(Exception e){
-	    System.out.println("RSA Decrypt Exception");
-	    System.exit(1);
-	    return null;
-	
-	}
-    }
-    public byte[] decrypt(byte[] ciphertext, SecretKey secKey, IvParameterSpec iv){
-	try{
-	    Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
-	    c.init(Cipher.DECRYPT_MODE,secKey,iv);
-	    byte[] plaintext = c.doFinal(ciphertext);
-	    return plaintext;
-	}catch(Exception e){
-	    System.out.println("AES Decrypt Exception");
-	    System.exit(1);
-	    return null;
-	}
-    }
-	
-    public static void main(String args[]) {
-	Server3 s = new Server3();
-        s.setPrivateKey("RSApriv.der");
-        s.setPublicKey("RSApub.der");
-	    
-        int portNumber = 2222;
 
-        System.out.println("Connected to port number = " + portNumber);
+    public static void main(String args[]) {
+
+        int portNumber = 2222;
 
         //Open a server socket on portNumber
         try
@@ -113,6 +46,8 @@ public class Server3 {
         {
             System.out.println(e);
         }
+        
+        System.out.println("Connected to port number = " + portNumber);
 
         //Create a client socket for every connection and pass the socket to the client
         while (true)
@@ -155,6 +90,7 @@ class clientThread extends Thread
     private final clientThread[] threads;
     private int maxClientsCount;
     int kicked = 0;
+    static CryptoChat ce;
 
     public clientThread(Socket clientSocket, clientThread[] threads)
     {
@@ -172,12 +108,53 @@ class clientThread extends Thread
         {
             //Create input and output streams for this client
             is = new DataInputStream(clientSocket.getInputStream());
+            //is = new DataInputStream(CypherInputStream(clientSocket.getInputStream()), c);
             os = new PrintStream(clientSocket.getOutputStream());
+            //os = new PrintStream(CypherOutputStream(clientSocket.getOutputStream()), c);
             String name;
+            
+            // Setting private key
+			ce = new CryptoChat();
+			ce.setPrivateKey("RSApriv.der");
+            
+            // Receive the encrypted secret key & decrypt
+			byte encryptedsecret[] = new byte[256];
+			is.read(encryptedsecret);
+			byte decryptedsecret[] = ce.RSADecrypt(encryptedsecret); 
+			SecretKey s = new SecretKeySpec(decryptedsecret, "AES");
+			
+			// Receive IV
+			byte ivbytes[] = new byte[16];
+			is.read(ivbytes);
+			IvParameterSpec iv = new IvParameterSpec(ivbytes);
+			
+			// Open new OutStream with CypherOutputStream
+			try{
+			
+				Cipher c_enc = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	    		c_enc.init(Cipher.ENCRYPT_MODE,s,iv);
+	    		os = new PrintStream(new CipherOutputStream(clientSocket.getOutputStream(), c_enc));
+	    	}catch(Exception e){
+	    		System.out.println("AES Encrypt Exception");
+	    		System.exit(1);
+			}
+			
+			// Open new InputStream with CypherInputStream
+	    	try{
+			
+				Cipher c_dec = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	    		c_dec.init(Cipher.DECRYPT_MODE,s,iv);
+	    		is = new DataInputStream(new CipherInputStream(clientSocket.getInputStream(), c_dec));
+	    	}catch(Exception e){
+	    		System.out.println("AES Encrypt Exception");
+	    		System.exit(1);
+			}
+            
             while (true)
-            {
+            {	
                 int duplicate = 0;
-                os.println("\nEnter your username:");
+                os.println(addSpaces("\nEnter your username:"));
+                os.flush();
                 name = is.readLine().trim();
 
                 //Check to see if entered username is currently being used
@@ -198,15 +175,18 @@ class clientThread extends Thread
                 //Alert the user if they entered invalid username, else continue
                 if(duplicate == 1)
                 {
-                    os.println("This username is already taken.");
+                    os.println(addSpaces("This username is already taken."));
+                    os.flush();
                 }
                 else if (name.indexOf('@') != -1)
                 {
-                    os.println("The name should not contain '@' character.");
+                    os.println(addSpaces("The name should not contain '@' character."));
+                    os.flush();
                 }
                 else if (name.indexOf(' ') != -1)
                 {
-                    os.println("The name should not contain spaces.");
+                    os.println(addSpaces("The name should not contain spaces."));
+                    os.flush();
                 }
                 else
                 {
@@ -217,7 +197,8 @@ class clientThread extends Thread
             os.println("");
 
             //Welcome the new client
-            os.println("<Server> Welcome " + name);
+            os.println(addSpaces("<Server> Welcome " + name));
+            os.flush();
             synchronized (this)
             {
                 for (int i = 0; i < maxClientsCount; i++)
@@ -234,7 +215,8 @@ class clientThread extends Thread
                 {
                     if (threads[i] != null && threads[i] != this && threads[i].clientName != null)
                     {
-                        threads[i].os.println("<Server> " + name + " has joined the chat room");
+                        threads[i].os.println(addSpaces("<Server> " + name + " has joined the chat room"));
+                        threads[i].os.flush();
                     }
                 }
             }
@@ -256,7 +238,7 @@ class clientThread extends Thread
             //start conversation (break when the client is kicked)
             while (this.kicked == 0)
             {
-                String line = is.readLine();
+                String line = is.readLine().trim();
                 if(this.kicked == 1)
                 {
                     break;
@@ -298,9 +280,11 @@ class clientThread extends Thread
                                             && threads[i].clientName != null
                                             && threads[i].clientName.equals(words[0]))
                                     {
-                                        threads[i].os.println("{from " + name + "} " + words[1]);
-                                        this.os.println("{to " + threads[i].clientName.substring(1,
-                                                threads[i].clientName.length()) + "} " + words[1]);
+                                        threads[i].os.println(addSpaces("{from " + name + "} " + words[1]));
+                                        threads[i].os.flush();
+                                        this.os.println(addSpaces("{to " + threads[i].clientName.substring(1,
+                                                threads[i].clientName.length()) + "} " + words[1]));
+                                                this.os.flush();
                                         break;
                                     }
                                 }
@@ -314,17 +298,21 @@ class clientThread extends Thread
                 {
                     synchronized (this)
                     {
-                        this.os.println("\nClient List:");
-                        this.os.println("-----------------------");
+                        this.os.println(addSpaces("\nClient List:"));
+                        this.os.flush();
+                        this.os.println(addSpaces("-----------------------"));
+                        this.os.flush();
                         for (int i = 0; i < maxClientsCount; i++)
                         {
                             if (threads[i] != null && threads[i] != this
                                     && threads[i].clientName != null)
                             {
-                                this.os.println(threads[i].clientName.substring(1, threads[i].clientName.length()));
+                                this.os.println(addSpaces(threads[i].clientName.substring(1, threads[i].clientName.length())));
+                                os.flush();
                             }
                         }
-                        this.os.println("-----------------------\n");
+                        this.os.println(addSpaces("-----------------------\n"));
+                        this.os.flush();
                     }
                 }
 
@@ -343,8 +331,9 @@ class clientThread extends Thread
                                 System.out.println(this.clientName.substring(1, this.clientName.length()) + " kicked " +
                                         kickedName.substring(1, kickedName.length()));
                                 threads[i].kicked = 1;
-                                threads[i].os.println("You have been kicked by " +
-                                        this.clientName.substring(1, this.clientName.length()));
+                                threads[i].os.println(addSpaces("You have been kicked by " +
+                                        this.clientName.substring(1, this.clientName.length())));
+                                        threads[i].os.flush();
                                 threads[i] = null;
 
                                 synchronized (this)
@@ -366,15 +355,19 @@ class clientThread extends Thread
                                     {
                                         if (threads[k] != null && threads[k].clientName != null)
                                         {
-                                            threads[k].os.println("<Server> " +
+                                            threads[k].os.println(addSpaces("<Server> " +
                                                     this.clientName.substring(1, this.clientName.length()) + " kicked " +
-                                                    kickedName.substring(1, kickedName.length()));
+                                                    kickedName.substring(1, kickedName.length())));
+                                                    os.flush();
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                }
+                else if(!line.matches(".*\\w.*"))
+                {
                 }
 
                 //Message must be public so broadcast to all clients
@@ -386,7 +379,16 @@ class clientThread extends Thread
                         {
                             if (threads[i] != null && threads[i].clientName != null)
                             {
-                                threads[i].os.println("<" + name + "> " + line);
+                            	if (threads[i].clientName == this.clientName)
+                            	{
+                            		threads[i].os.println(addSpaces("<You> " + line));
+                                	threads[i].os.flush();
+                            	}
+                            	else
+                            	{
+                            		threads[i].os.println(addSpaces("<" + name + "> " + line));
+                                	threads[i].os.flush();
+                            	}
                             }
                         }
                     }
@@ -405,12 +407,14 @@ class clientThread extends Thread
                                 && threads[i].clientName != null)
                         {
 
-                            threads[i].os.println("<Server> " + name + " has left the chat room");
+                            threads[i].os.println(addSpaces("<Server> " + name + " has left the chat room"));
+                            threads[i].os.flush();
                         }
                     }
                 }
             }
-            os.println("See Ya Later " + name);
+            os.println(addSpaces("See Ya Later " + name));
+            os.flush();
 
             //Clean up. Set Variable to null so server can accept another client
             synchronized (this)
@@ -432,5 +436,10 @@ class clientThread extends Thread
         catch (IOException e)
         {
         }
+    }
+    
+    public static String addSpaces(String str)
+    {
+    	return str + "\n                                                                            ";
     }
 }
